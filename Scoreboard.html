@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FanPulse Live NFL</title>
+<style>
+body{margin:0;background:#071426;color:white;font-family:Arial,sans-serif;padding:18px}
+header{text-align:center;padding:20px;background:#102c52;border-radius:16px}
+h1{color:#52baff;margin:0}
+p{color:#b6c9df}
+button{background:#1687e8;color:white;border:0;border-radius:9px;padding:12px;margin:12px 5px;font-weight:bold}
+.game{background:#142944;border:1px solid #315477;border-radius:14px;padding:18px;margin:14px 0}
+.teams{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.team{display:flex;align-items:center;gap:8px}
+.team img{width:38px;height:38px;object-fit:contain}
+.score{font-size:25px;font-weight:bold;color:#fff}
+.status{color:#61d7ff;margin-top:12px}
+.live{color:#65f6a3;font-weight:bold}
+</style>
+</head>
+<body>
+<header>
+<h1>FANPULSE</h1>
+<p>FEEL EVERY BEAT</p>
+<h2>LIVE NFL UPDATES</h2>
+<button onclick="loadGames()">Refresh Scores</button>
+<button onclick="location.href='index.html'">Home</button>
+<p id="updated">Connecting to NFL scores...</p>
+</header>
+<main id="games"></main>
+<script>
+const url="https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard";
+async function loadGames(){
+ const area=document.getElementById("games");
+ try{
+  const response=await fetch(url,{cache:"no-store"});
+  if(!response.ok)throw Error("Feed unavailable");
+  const data=await response.json();
+  area.replaceChildren();
+  for(const event of data.events||[]){
+   const c=event.competitions?.[0];
+   if(!c)continue;
+   const home=c.competitors.find(x=>x.homeAway==="home");
+   const away=c.competitors.find(x=>x.homeAway==="away");
+   if(!home||!away)continue;
+   const card=document.createElement("section");
+   card.className="game";
+   const status=event.status?.type;
+   const detail=status?.state==="pre"
+    ?new Date(event.date).toLocaleString("en-US",{timeZone:"America/New_York",weekday:"short",hour:"numeric",minute:"2-digit"})+" ET"
+    :status?.detail||"Scheduled";
+   const team=(x)=>{
+    const el=document.createElement("div");
+    el.className="team";
+    if(x.team.logo){
+     const img=document.createElement("img");
+     img.src=x.team.logo;
+     img.alt="";
+     el.append(img);
+    }
+    const name=document.createElement("span");
+    name.textContent=x.team.abbreviation||x.team.displayName;
+    el.append(name);
+    return el;
+   };
+   const teams=document.createElement("div");
+   teams.className="teams";
+   const scores=document.createElement("strong");
+   scores.className="score";
+   scores.textContent=(away.score??"-")+" - "+(home.score??"-");
+   teams.append(team(away),scores,team(home));
+   const label=document.createElement("div");
+   label.className="status"+(status?.state==="in"?" live":"");
+   label.textContent=(status?.state==="in"?"● LIVE · ":"")+detail;
+   card.append(teams,label);
+   area.append(card);
+  }
+  if(!area.children.length)area.textContent="No NFL games available.";
+  document.getElementById("updated").textContent=
+   "Updated "+new Date().toLocaleTimeString();
+ }catch(e){
+  area.textContent="Unable to load scores. Check your connection and try Refresh.";
+  document.getElementById("updated").textContent="Connection unavailable";
+ }
+}
+loadGames();
+setInterval(loadGames,30000);
+</script>
+</body>
+</html>
